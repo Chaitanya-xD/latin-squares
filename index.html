@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Grid Drill — Latin Square Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF2F5;
+    --grid-line: #B8C4CE;
+    --ink: #1C2B3A;
+    --ink-soft: #5B6B7A;
+    --amber: #C98A2C;
+    --amber-bg: #FBEBD2;
+    --green: #2F8F5B;
+    --green-bg: #DCF0E3;
+    --red: #C0392B;
+    --red-bg: #FBE1DD;
+    --card: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 48px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  header {
+    text-align: left;
+    margin-bottom: 22px;
+  }
+
+  header h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+
+  header p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+  }
+
+  .timer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+
+  .timer {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timer.warn { color: var(--red); }
+
+  .puzzle-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .grid-card {
+    background: var(--card);
+    border: 1px solid var(--grid-line);
+    border-radius: 4px;
+    padding: 6px;
+    box-shadow: 0 1px 0 rgba(28,43,58,0.04);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--grid-line);
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(1.1rem, 5vw, 1.6rem);
+  }
+
+  .cell.blank { color: var(--grid-line); }
+
+  .cell.target {
+    background: var(--amber-bg);
+    color: var(--amber);
+  }
+
+  .cell.target::after { content: "?"; }
+
+  .cell.target.filled-correct {
+    background: var(--green-bg);
+    color: var(--green);
+  }
+  .cell.target.filled-correct::after { content: none; }
+
+  .cell.target.filled-wrong {
+    background: var(--red-bg);
+    color: var(--red);
+  }
+  .cell.target.filled-wrong::after { content: none; }
+
+  .answers {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .answer-btn {
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    background: var(--card);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.08s ease;
+  }
+
+  .answer-btn:active { transform: scale(0.92); }
+
+  .answer-btn.correct {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+
+  .answer-btn.wrong {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  .answer-btn:disabled { cursor: default; }
+
+  .feedback-row {
+    margin-top: 18px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .feedback-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .feedback-text.correct { color: var(--green); }
+  .feedback-text.wrong { color: var(--red); }
+
+  .next-btn {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    padding: 10px 18px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .next-btn:active { opacity: 0.85; }
+
+  .stats-bar {
+    margin-top: 30px;
+    display: flex;
+    border-top: 1px solid var(--grid-line);
+    padding-top: 14px;
+  }
+
+  .stat {
+    flex: 1;
+    text-align: left;
+  }
+
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .reset-link {
+    margin-top: 18px;
+    text-align: left;
+  }
+
+  .reset-link button {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Grid Drill</h1>
+    <p>5×5 logic squares — solve the marked cell</p>
+  </header>
+
+  <div class="timer-row">
+    <div>
+      <div class="timer" id="timer">0.0s</div>
+    </div>
+    <div class="puzzle-label" id="puzzleLabel">puzzle #1</div>
+  </div>
+
+  <div class="grid-card">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="answers" id="answers"></div>
+
+  <div class="feedback-row">
+    <span class="feedback-text" id="feedbackText"></span>
+    <button class="next-btn" id="nextBtn" style="display:none;">Next puzzle</button>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-value" id="statCount">0</div>
+      <div class="stat-label">solved</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statAvg">–</div>
+      <div class="stat-label">avg time</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statBest">–</div>
+      <div class="stat-label">best time</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statAcc">–</div>
+      <div class="stat-label">accuracy</div>
+    </div>
+  </div>
+
+  <div class="reset-link">
+    <button id="resetBtn">reset stats</button>
+  </div>
+</div>
+
+<script>
+// ---------- Puzzle logic (see planning notes: propagation-based generator) ----------
+const N = 5;
+const LETTERS = ['A', 'B', 'C', 'D', 'E'];
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateLatinSquare() {
+  let grid = [];
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let c = 0; c < N; c++) row.push((r + c) % N);
+    grid.push(row);
+  }
+  const symbolPerm = shuffle([0, 1, 2, 3, 4]);
+  grid = grid.map(row => row.map(v => symbolPerm[v]));
+  const rowOrder = shuffle([0, 1, 2, 3, 4]);
+  grid = rowOrder.map(r => grid[r]);
+  const colOrder = shuffle([0, 1, 2, 3, 4]);
+  grid = grid.map(row => colOrder.map(c => row[c]));
+  return grid;
+}
+
+function propagate(grid) {
+  const g = grid.map(row => row.slice());
+  const order = [];
+
+  function candidates(r, c) {
+    if (g[r][c] !== null) return null;
+    const used = new Set();
+    for (let i = 0; i < N; i++) {
+      if (g[r][i] !== null) used.add(g[r][i]);
+      if (g[i][c] !== null) used.add(g[i][c]);
+    }
+    const cand = [];
+    for (let v = 0; v < N; v++) if (!used.has(v)) cand.push(v);
+    return cand;
+  }
+
+  let progress = true;
+  while (progress) {
+    progress = false;
+
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        if (g[r][c] !== null) continue;
+        const cand = candidates(r, c);
+        if (cand.length === 1) {
+          g[r][c] = cand[0];
+          order.push({ r, c, val: cand[0] });
+          progress = true;
+        } else if (cand.length === 0) {
+          return { solvedFully: false, order, contradiction: true };
+        }
+      }
+    }
+    if (progress) continue;
+
+    for (let r = 0; r < N && !progress; r++) {
+      for (let v = 0; v < N && !progress; v++) {
+        let spot = null, count = 0;
+        for (let c = 0; c < N; c++) {
+          if (g[r][c] !== null) continue;
+          const cand = candidates(r, c);
+          if (cand.includes(v)) { count++; spot = c; }
+        }
+        if (count === 1) {
+          g[r][spot] = v;
+          order.push({ r, c: spot, val: v });
+          progress = true;
+        }
+      }
+    }
+    if (progress) continue;
+
+    for (let c = 0; c < N && !progress; c++) {
+      for (let v = 0; v < N && !progress; v++) {
+        let spot = null, count = 0;
+        for (let r = 0; r < N; r++) {
+          if (g[r][c] !== null) continue;
+          const cand = candidates(r, c);
+          if (cand.includes(v)) { count++; spot = r; }
+        }
+        if (count === 1) {
+          g[spot][c] = v;
+          order.push({ r: spot, c, val: v });
+          progress = true;
+        }
+      }
+    }
+  }
+
+  const solvedFully = g.every(row => row.every(v => v !== null));
+  return { solvedFully, order, contradiction: false };
+}
+
+function generatePuzzle(minStep = 6, maxStep = 10, maxAttempts = 4000) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const full = generateLatinSquare();
+    const tr = Math.floor(Math.random() * N);
+    const tc = Math.floor(Math.random() * N);
+
+    const cells = [];
+    for (let r = 0; r < N; r++)
+      for (let c = 0; c < N; c++)
+        if (!(r === tr && c === tc)) cells.push([r, c]);
+    const order = shuffle(cells);
+
+    const minFill = Math.ceil(0.40 * N * N);
+    const maxFill = Math.floor(0.55 * N * N);
+
+    let puzzle = Array.from({ length: N }, () => Array(N).fill(null));
+    let filledCount = 0;
+
+    for (const [r, c] of order) {
+      puzzle[r][c] = full[r][c];
+      filledCount++;
+      if (filledCount < minFill) continue;
+
+      const result = propagate(puzzle);
+      if (result.solvedFully) {
+        const idx = result.order.findIndex(s => s.r === tr && s.c === tc);
+        const step = idx + 1;
+        if (step >= minStep && step <= maxStep) {
+          return {
+            puzzle,
+            solution: full,
+            target: { r: tr, c: tc, val: full[tr][tc] },
+            fillCount: filledCount,
+            stepDepth: step
+          };
+        }
+      }
+      if (filledCount >= maxFill) break;
+    }
+  }
+  return null;
+}
+
+// ---------- UI wiring ----------
+const gridEl = document.getElementById('grid');
+const answersEl = document.getElementById('answers');
+const timerEl = document.getElementById('timer');
+const feedbackEl = document.getElementById('feedbackText');
+const nextBtn = document.getElementById('nextBtn');
+const puzzleLabelEl = document.getElementById('puzzleLabel');
+
+let current = null;
+let startTime = null;
+let timerInterval = null;
+let answered = false;
+let puzzleCount = 1;
+
+const STORAGE_KEY = 'gridDrillStats';
+function loadStats() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { solved: 0, correct: 0, totalTime: 0, best: null };
+}
+function saveStats(stats) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+}
+let stats = loadStats();
+
+function renderStats() {
+  document.getElementById('statCount').textContent = stats.solved;
+  document.getElementById('statAvg').textContent =
+    stats.solved > 0 ? (stats.totalTime / stats.solved).toFixed(1) + 's' : '–';
+  document.getElementById('statBest').textContent =
+    stats.best !== null ? stats.best.toFixed(1) + 's' : '–';
+  document.getElementById('statAcc').textContent =
+    stats.solved > 0 ? Math.round((stats.correct / stats.solved) * 100) + '%' : '–';
+}
+
+function renderGrid() {
+  gridEl.innerHTML = '';
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const div = document.createElement('div');
+      const isTarget = current.target.r === r && current.target.c === c;
+      const val = current.puzzle[r][c];
+      div.className = 'cell' + (isTarget ? ' target' : (val === null ? ' blank' : ''));
+      div.id = `cell-${r}-${c}`;
+      if (!isTarget) {
+        div.textContent = val === null ? '' : LETTERS[val];
+      }
+      gridEl.appendChild(div);
+    }
+  }
+}
+
+function renderAnswers() {
+  answersEl.innerHTML = '';
+  LETTERS.forEach(letter => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.textContent = letter;
+    btn.addEventListener('click', () => handleAnswer(letter, btn));
+    answersEl.appendChild(btn);
+  });
+}
+
+function startTimer() {
+  startTime = Date.now();
+  timerEl.classList.remove('warn');
+  timerInterval = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+    timerEl.textContent = elapsed.toFixed(1) + 's';
+    if (elapsed > 60) timerEl.classList.add('warn');
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  return (Date.now() - startTime) / 1000;
+}
+
+function handleAnswer(letter, btnEl) {
+  if (answered) return;
+  answered = true;
+  const elapsed = stopTimer();
+  const correctLetter = LETTERS[current.target.val];
+  const isCorrect = letter === correctLetter;
+
+  const targetCell = document.getElementById(`cell-${current.target.r}-${current.target.c}`);
+  targetCell.classList.add(isCorrect ? 'filled-correct' : 'filled-wrong');
+  targetCell.textContent = correctLetter;
+
+  [...answersEl.children].forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correctLetter) b.classList.add('correct');
+    else if (b === btnEl) b.classList.add('wrong');
+  });
+
+  feedbackEl.textContent = isCorrect
+    ? `Correct — ${elapsed.toFixed(1)}s`
+    : `Answer was ${correctLetter} — ${elapsed.toFixed(1)}s`;
+  feedbackEl.className = 'feedback-text ' + (isCorrect ? 'correct' : 'wrong');
+  nextBtn.style.display = 'inline-block';
+
+  stats.solved += 1;
+  if (isCorrect) stats.correct += 1;
+  stats.totalTime += elapsed;
+  if (stats.best === null || elapsed < stats.best) stats.best = elapsed;
+  saveStats(stats);
+  renderStats();
+}
+
+function loadPuzzle() {
+  answered = false;
+  feedbackEl.textContent = '';
+  nextBtn.style.display = 'none';
+  puzzleLabelEl.textContent = `puzzle #${puzzleCount}`;
+
+  current = generatePuzzle(6, 10);
+  if (!current) {
+    // extremely unlikely fallback
+    current = generatePuzzle(4, 12);
+  }
+  renderGrid();
+  renderAnswers();
+  startTimer();
+}
+
+nextBtn.addEventListener('click', () => {
+  puzzleCount += 1;
+  loadPuzzle();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all stats?')) {
+    stats = { solved: 0, correct: 0, totalTime: 0, best: null };
+    saveStats(stats);
+    renderStats();
+  }
+});
+
+renderStats();
+loadPuzzle();
+</script>
+</body>
+</html>
