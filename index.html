@@ -62,11 +62,12 @@
     font-size: 0.88rem;
   }
 
-  .timer-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 14px;
+  .timer {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    visibility: hidden;
   }
 
   .timer {
@@ -504,17 +505,13 @@ function renderAnswers() {
 function startTimer() {
   startTime = Date.now();
   timerEl.classList.remove('warn');
-  timerInterval = setInterval(() => {
-    const elapsed = (Date.now() - startTime) / 1000;
-    timerEl.textContent = elapsed.toFixed(1) + 's';
-    if (elapsed > 60) timerEl.classList.add('warn');
-  }, 100);
+  timerEl.style.visibility = 'hidden';
 }
 
 function stopTimer() {
-  clearInterval(timerInterval);
   return (Date.now() - startTime) / 1000;
 }
+
 
 function handleAnswer(letter, btnEl) {
   if (answered) return;
