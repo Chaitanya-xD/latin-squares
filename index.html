@@ -62,12 +62,11 @@
     font-size: 0.88rem;
   }
 
-  .timer {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.8rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    visibility: hidden;
+  .timer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
   }
 
   .timer {
@@ -251,7 +250,7 @@
 
   <div class="timer-row">
     <div>
-      <div class="timer" id="timer">0.0s</div>
+      <div class="timer" id="timer">·</div>
     </div>
     <div class="puzzle-label" id="puzzleLabel">puzzle #1</div>
   </div>
@@ -447,7 +446,6 @@ const puzzleLabelEl = document.getElementById('puzzleLabel');
 
 let current = null;
 let startTime = null;
-let timerInterval = null;
 let answered = false;
 let puzzleCount = 1;
 
@@ -503,15 +501,19 @@ function renderAnswers() {
 }
 
 function startTimer() {
+  // Time is tracked silently in the background — nothing ticks on screen
+  // while you're solving. It's only revealed once you answer.
   startTime = Date.now();
   timerEl.classList.remove('warn');
-  timerEl.style.visibility = 'hidden';
+  timerEl.textContent = '·';
 }
 
 function stopTimer() {
-  return (Date.now() - startTime) / 1000;
+  const elapsed = (Date.now() - startTime) / 1000;
+  timerEl.textContent = elapsed.toFixed(1) + 's';
+  if (elapsed > 60) timerEl.classList.add('warn');
+  return elapsed;
 }
-
 
 function handleAnswer(letter, btnEl) {
   if (answered) return;
