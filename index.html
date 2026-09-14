@@ -131,6 +131,82 @@
   }
   .cell.target.filled-wrong::after { content: none; }
 
+  .hint-row {
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .hint-status {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .hint-btn {
+    background: var(--card);
+    border: 1.5px solid var(--amber);
+    color: var(--amber);
+    border-radius: 3px;
+    padding: 6px 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .hint-btn.active {
+    background: var(--amber);
+    color: #fff;
+  }
+
+  .hint-btn:active { opacity: 0.8; }
+
+  .hint-btn:disabled {
+    border-color: var(--grid-line);
+    color: var(--ink-soft);
+    cursor: default;
+  }
+
+  .hint-picker {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .hint-picker-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 4px;
+    border: 1.5px solid var(--amber);
+    background: var(--amber-bg);
+    color: var(--amber);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .hint-picker-btn:active { transform: scale(0.94); }
+
+  .cell.hint-selectable {
+    outline: 2px dashed var(--amber);
+    outline-offset: -2px;
+    cursor: pointer;
+  }
+
+  .cell.hint-wrong-flash {
+    background: var(--red-bg) !important;
+    color: var(--red) !important;
+  }
+
+  .cell.hint-revealed {
+    background: var(--amber-bg);
+    color: var(--amber);
+  }
+
   .answers {
     display: flex;
     justify-content: space-between;
@@ -258,6 +334,13 @@
   <div class="grid-card">
     <div class="grid" id="grid"></div>
   </div>
+
+  <div class="hint-row">
+    <span class="hint-status" id="hintStatus"></span>
+    <button class="hint-btn" id="hintBtn">Hint (3 left)</button>
+  </div>
+
+  <div class="hint-picker" id="hintPicker" style="display:none;"></div>
 
   <div class="answers" id="answers"></div>
 
@@ -443,6 +526,14 @@ const timerEl = document.getElementById('timer');
 const feedbackEl = document.getElementById('feedbackText');
 const nextBtn = document.getElementById('nextBtn');
 const puzzleLabelEl = document.getElementById('puzzleLabel');
+const hintBtn = document.getElementById('hintBtn');
+const hintStatusEl = document.getElementById('hintStatus');
+const hintPickerEl = document.getElementById('hintPicker');
+
+const MAX_HINTS = 3;
+let hintsLeft = MAX_HINTS;
+let hintModeActive = false;
+let hintSelectedCell = null; // {r, c}
 
 let current = null;
 let startTime = null;
@@ -484,10 +575,91 @@ function renderGrid() {
       if (!isTarget) {
         div.textContent = val === null ? '' : LETTERS[val];
       }
+      if (val === null && !isTarget) {
+        div.addEventListener('click', () => onBlankCellClick(r, c, div));
+      }
       gridEl.appendChild(div);
     }
   }
 }
+
+function onBlankCellClick(r, c, cellEl) {
+  if (!hintModeActive || answered || hintsLeft <= 0) return;
+  // clear any previous selection highlight
+  document.querySelectorAll('.cell.hint-selectable').forEach(el => el.classList.remove('hint-selectable'));
+  hintSelectedCell = { r, c };
+  cellEl.classList.add('hint-selectable');
+  showHintPicker();
+}
+
+function showHintPicker() {
+  hintPickerEl.innerHTML = '';
+  hintPickerEl.style.display = 'flex';
+  LETTERS.forEach(letter => {
+    const btn = document.createElement('button');
+    btn.className = 'hint-picker-btn';
+    btn.textContent = letter;
+    btn.addEventListener('click', () => handleHintGuess(letter));
+    hintPickerEl.appendChild(btn);
+  });
+  hintStatusEl.textContent = 'Pick a letter for the selected cell';
+}
+
+function hideHintPicker() {
+  hintPickerEl.style.display = 'none';
+  hintPickerEl.innerHTML = '';
+}
+
+function handleHintGuess(letter) {
+  if (!hintSelectedCell) return;
+  const { r, c } = hintSelectedCell;
+  const cellEl = document.getElementById(`cell-${r}-${c}`);
+  const correctVal = current.solution[r][c];
+  const correctLetter = LETTERS[correctVal];
+
+  hintsLeft -= 1;
+  hintBtn.textContent = `Hint (${hintsLeft} left)`;
+
+  if (letter === correctLetter) {
+    current.puzzle[r][c] = correctVal;
+    cellEl.textContent = correctLetter;
+    cellEl.classList.remove('blank', 'hint-selectable');
+    cellEl.classList.add('hint-revealed');
+    hintStatusEl.textContent = 'Correct!';
+  } else {
+    cellEl.classList.add('hint-wrong-flash');
+    setTimeout(() => cellEl.classList.remove('hint-wrong-flash'), 500);
+    cellEl.classList.remove('hint-selectable');
+    hintStatusEl.textContent = 'Not quite — try another cell.';
+  }
+
+  hintSelectedCell = null;
+  hideHintPicker();
+
+  if (hintsLeft <= 0) {
+    hintBtn.disabled = true;
+    exitHintMode();
+  }
+}
+
+function exitHintMode() {
+  hintModeActive = false;
+  hintBtn.classList.remove('active');
+  document.querySelectorAll('.cell.hint-selectable').forEach(el => el.classList.remove('hint-selectable'));
+  hideHintPicker();
+  if (hintsLeft > 0) hintStatusEl.textContent = '';
+}
+
+hintBtn.addEventListener('click', () => {
+  if (hintsLeft <= 0 || answered) return;
+  hintModeActive = !hintModeActive;
+  hintBtn.classList.toggle('active', hintModeActive);
+  if (hintModeActive) {
+    hintStatusEl.textContent = 'Tap any blank cell';
+  } else {
+    exitHintMode();
+  }
+});
 
 function renderAnswers() {
   answersEl.innerHTML = '';
@@ -518,6 +690,7 @@ function stopTimer() {
 function handleAnswer(letter, btnEl) {
   if (answered) return;
   answered = true;
+  exitHintMode();
   const elapsed = stopTimer();
   const correctLetter = LETTERS[current.target.val];
   const isCorrect = letter === correctLetter;
@@ -551,6 +724,15 @@ function loadPuzzle() {
   feedbackEl.textContent = '';
   nextBtn.style.display = 'none';
   puzzleLabelEl.textContent = `puzzle #${puzzleCount}`;
+
+  hintsLeft = MAX_HINTS;
+  hintModeActive = false;
+  hintSelectedCell = null;
+  hintBtn.disabled = false;
+  hintBtn.classList.remove('active');
+  hintBtn.textContent = `Hint (${MAX_HINTS} left)`;
+  hintStatusEl.textContent = '';
+  hideHintPicker();
 
   current = generatePuzzle(6, 10);
   if (!current) {
